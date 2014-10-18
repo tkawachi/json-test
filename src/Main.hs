@@ -61,6 +61,17 @@ expect' value = foldr f HM.empty (expect value)
           f (Just k, v) acc = HM.insert k v acc
           f (Nothing, _) acc = acc
 
+merge2 :: HM.HashMap String JType -> HM.HashMap String JType -> HM.HashMap String JType
+merge2 = HM.unionWith f
+    where
+        f :: JType -> JType -> JType
+        f a b
+            | a == b = a
+            | otherwise = JUnknown
+
+merge :: [HM.HashMap String JType] -> HM.HashMap String JType
+merge = foldr merge2 HM.empty
+
 main :: IO ()
 main = do
     print testValue
