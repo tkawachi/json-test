@@ -36,19 +36,22 @@ expectArrayType ary = JArray et
             t : restTypes -> if all (\x -> t == x) restTypes then t else JUnknown
             [] -> JUnknown
 
-expect :: Value -> [(String, JType)]
-expect (String _) = [("", JString)]
-expect (Number _) = [("", JNumber)]
-expect (Bool _) = [("", JBool)]
-expect (Array a) = [("", expectArrayType $ toList a)]
+expect :: Value -> [(Maybe String, JType)]
+expect (String _) = [(Nothing, JString)]
+expect (Number _) = [(Nothing, JNumber)]
+expect (Bool _) = [(Nothing, JBool)]
+expect (Array a) = [(Nothing, expectArrayType $ toList a)]
 expect (Object obj) = list
     where
-        f :: (String, Value) -> [(String, JType)]
-        f (k, v) = map (\(kk, vv) -> (k ++ (if kk == "" then kk else "." ++ kk), vv)) $ expect v
-        f' :: (T.Text, Value) -> [(String, JType)]
+        f :: (String, Value) -> [(Maybe String, JType)]
+        f (k, v) = map (\(kk, vv) -> case kk of
+            Just suffix -> ((Just $ k ++ "." ++ suffix), vv)
+            Nothing -> (Just k, vv)
+            ) $ expect v
+        f' :: (T.Text, Value) -> [(Maybe String, JType)]
         f' (k, v) = f (T.unpack k, v)
         list = concat $ map f' $ toList obj
-expect Null = [("", JUnknown)]
+expect Null = [(Nothing, JUnknown)]
 
 main :: IO ()
 main = do
