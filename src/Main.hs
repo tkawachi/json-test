@@ -11,6 +11,7 @@ module Main where
 import Data.Aeson
 import GHC.Exts
 import qualified Data.Text as T
+import qualified Data.HashMap.Strict as HM
 
 -- Expected JSON Types
 data JType = JString | JNumber | JBool | JArray JType | JUnknown
@@ -31,7 +32,7 @@ expectValue Null = JUnknown
 -- If all elements of Array is the same type, then use it otherwise use unknown.
 expectArrayType :: [Value] -> JType
 expectArrayType ary = JArray et
-    where jTypes = map expectValue $ ary
+    where jTypes = map expectValue ary
           et = case jTypes of
             t : restTypes -> if all (\x -> t == x) restTypes then t else JUnknown
             [] -> JUnknown
@@ -45,16 +46,23 @@ expect (Object obj) = list
     where
         f :: (String, Value) -> [(Maybe String, JType)]
         f (k, v) = map (\(kk, vv) -> case kk of
-            Just suffix -> ((Just $ k ++ "." ++ suffix), vv)
+            Just suffix -> (Just $ k ++ "." ++ suffix, vv)
             Nothing -> (Just k, vv)
             ) $ expect v
         f' :: (T.Text, Value) -> [(Maybe String, JType)]
         f' (k, v) = f (T.unpack k, v)
-        list = concat $ map f' $ toList obj
+        list = concatMap f' $ toList obj
 expect Null = [(Nothing, JUnknown)]
+
+expect' :: Value -> HM.HashMap String JType
+expect' value = foldr f HM.empty (expect value)
+    where
+          f :: (Maybe String, JType) -> HM.HashMap String JType -> HM.HashMap String JType
+          f (Just k, v) acc = HM.insert k v acc
+          f (Nothing, _) acc = acc
 
 main :: IO ()
 main = do
     print testValue
-    print $ testValue >>= Just . expect
+    print $ testValue >>= Just . expect'
 
